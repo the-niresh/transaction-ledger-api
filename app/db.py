@@ -6,7 +6,9 @@ SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
 
 
 def database_path() -> str:
-    return os.environ.get("LEDGER_DB", "ledger.db")
+    # On Vercel only /tmp is writable, and it is wiped when an instance restarts.
+    default = "/tmp/ledger.db" if os.environ.get("VERCEL") else "ledger.db"
+    return os.environ.get("LEDGER_DB", default)
 
 
 def connect(path: str) -> sqlite3.Connection:

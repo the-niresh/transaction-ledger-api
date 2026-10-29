@@ -6,6 +6,11 @@ transaction history, and transfer money between accounts.
 Built with **Python 3.12+, FastAPI and SQLite**. SQLite needs no server, so the project runs
 locally with one command and nothing else to install.
 
+**Live demo:** https://confluencer-assignment.vercel.app (opens the interactive docs, where every
+endpoint can be tried in the browser). The demo runs on Vercel, where SQLite can only write to
+`/tmp`, which is wiped when an instance restarts. So data on the demo can reset at any time, and
+two requests may land on different instances. Run it locally to see data that persists.
+
 ## Run it
 
 With [uv](https://docs.astral.sh/uv/):

@@ -7,7 +7,7 @@ import sqlite3
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import db, ledger
@@ -66,6 +66,11 @@ async def http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
 @app.exception_handler(Exception)
 async def unexpected_error(_: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(body("INTERNAL_ERROR", "Something went wrong. No changes were saved."), status_code=500)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/docs")
 
 
 @app.post("/accounts", status_code=201, response_model=Account, tags=["accounts"])
