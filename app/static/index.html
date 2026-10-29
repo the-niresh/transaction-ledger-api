@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transaction Ledger</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #fffdf9; --ink: #1c1b18; --muted: #6b675e; --line: #e3ded2;
+    --credit: #1f7a4d; --debit: #b23b2e; --accent: #1c1b18; --warn-bg: #fff4e5; --warn: #8a5a00;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141412; --card: #1d1c19; --ink: #f1eee6; --muted: #a29d91; --line: #34322c;
+      --credit: #5cc28e; --debit: #f07a6b; --accent: #f1eee6; --warn-bg: #2d2412; --warn: #f0c060;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { border-bottom: 1px solid var(--line); background: var(--card); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; height: 56px; gap: 12px; }
+  header b { font-size: 17px; letter-spacing: -.01em; }
+  header nav a { color: var(--muted); margin-left: 16px; font-size: 14px; }
+  header nav a:hover { color: var(--ink); }
+  main { display: grid; gap: 16px; grid-template-columns: 300px minmax(0, 1fr); padding: 20px 16px 48px; }
+  @media (max-width: 820px) { main { grid-template-columns: minmax(0, 1fr); } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px;
+                  background: var(--bg); color: var(--ink); font: inherit; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button { padding: 9px 14px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent);
+           color: var(--bg); font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover { opacity: .88; }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 500; }
+  button:disabled { opacity: .4; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: end; }
+  .row > * { flex: 1; min-width: 0; }
+  .accounts { list-style: none; margin: 12px 0 0; padding: 0; }
+  .accounts li button { width: 100%; text-align: left; background: transparent; color: var(--ink);
+                        border: 1px solid transparent; border-left: 3px solid transparent; border-radius: 6px;
+                        padding: 8px 10px; font-weight: 500; display: flex; justify-content: space-between; gap: 8px; }
+  .accounts li button:hover { background: var(--bg); opacity: 1; }
+  .accounts li button[aria-current="true"] { background: var(--bg); border-left-color: var(--accent); font-weight: 700; }
+  .accounts .bal { font-family: var(--mono); color: var(--muted); font-weight: 400; }
+  .empty { color: var(--muted); font-size: 14px; }
+  .hero { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 8px; }
+  .hero .name { font-size: 22px; font-weight: 700; }
+  .hero .id { font-family: var(--mono); font-size: 12px; color: var(--muted); word-break: break-all; }
+  .bal-box { text-align: right; }
+  @media (max-width: 640px) { .bal-box { text-align: left; } }
+  .balance { font-family: var(--mono); font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+  .grid2 { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-weight: 500; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 14px; display: none; }
+  .msg.show { display: block; }
+  .msg.ok { background: color-mix(in srgb, var(--credit) 12%, transparent); color: var(--credit); }
+  .msg.err { background: color-mix(in srgb, var(--debit) 12%, transparent); color: var(--debit); }
+  .msg code { font-family: var(--mono); font-size: 12px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px; }
+  th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase;
+       letter-spacing: .06em; padding: 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+  th.num { text-align: right; }
+  .credit { color: var(--credit); } .debit { color: var(--debit); }
+  .tag { font-size: 11px; font-family: var(--mono); color: var(--muted); }
+  .pager { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; flex-wrap: wrap; }
+  .pager span { color: var(--muted); font-size: 13px; }
+  .note { background: var(--warn-bg); color: var(--warn); font-size: 13px; border-radius: 8px; padding: 10px 12px; }
+  .stack > * + * { margin-top: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <b>Transaction Ledger</b>
+    <nav><a href="/docs">API docs</a><a href="https://github.com/the-niresh/transaction-ledger-api">Source</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <aside class="stack">
+    <section class="card">
+      <h2>Accounts</h2>
+      <form id="create">
+        <label for="name">New account name</label>
+        <div class="row"><input id="name" required maxlength="200" placeholder="e.g. Asha"><button>Create</button></div>
+      </form>
+      <ul class="accounts" id="accounts"></ul>
+      <p class="empty" id="no-accounts">No accounts yet. Create one to start.</p>
+      <div class="msg" id="create-msg" role="status"></div>
+    </section>
+    <p class="note">Demo data lives on a serverless instance and can reset at any time. Accounts you create are remembered in this browser only.</p>
+  </aside>
+
+  <section class="stack" id="detail" hidden>
+    <div class="card hero">
+      <div><div class="name" id="acc-name"></div><div class="id" id="acc-id"></div></div>
+      <div class="bal-box"><div class="tag">BALANCE</div><div class="balance" id="acc-balance"></div></div>
+    </div>
+
+    <div class="grid2">
+      <form class="card" id="tx">
+        <h2>Add transaction</h2>
+        <div class="seg" role="group" aria-label="Type">
+          <button type="button" data-type="credit" aria-pressed="true">Credit</button>
+          <button type="button" data-type="debit" aria-pressed="false">Debit</button>
+        </div>
+        <div class="row">
+          <div><label for="tx-amount">Amount</label><input id="tx-amount" required inputmode="decimal" placeholder="100.00"></div>
+          <div><label for="tx-ref">Reference ID</label><input id="tx-ref" required maxlength="100"></div>
+        </div>
+        <label for="tx-desc">Description</label>
+        <input id="tx-desc" maxlength="500" placeholder="Optional">
+        <div class="row" style="margin-top:12px"><button>Save transaction</button>
+          <button type="button" class="ghost" id="tx-repeat" title="Send the last request again with the same reference ID">Resend last</button></div>
+        <div class="msg" id="tx-msg" role="status"></div>
+      </form>
+
+      <form class="card" id="tr">
+        <h2>Transfer out</h2>
+        <label for="tr-to">To account</label>
+        <select id="tr-to" required></select>
+        <div class="row">
+          <div><label for="tr-amount">Amount</label><input id="tr-amount" required inputmode="decimal" placeholder="30.00"></div>
+          <div><label for="tr-ref">Reference ID</label><input id="tr-ref" required maxlength="100"></div>
+        </div>
+        <div style="margin-top:12px"><button>Transfer</button></div>
+        <div class="msg" id="tr-msg" role="status"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="pager" style="margin:0 0 8px">
+        <h2 style="margin:0">History</h2>
+        <div class="seg" role="group" aria-label="Filter" id="filter">
+          <button type="button" data-filter="" aria-pressed="true">All</button>
+          <button type="button" data-filter="credit" aria-pressed="false">Credits</button>
+          <button type="button" data-filter="debit" aria-pressed="false">Debits</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>Type</th><th class="num">Amount</th><th class="num">Balance after</th><th>Reference</th><th>Description</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="no-rows">No transactions yet.</p>
+      <div class="pager">
+        <span id="page-info"></span>
+        <div class="row" style="flex:0 0 auto"><button type="button" class="ghost" id="prev">Previous</button><button type="button" class="ghost" id="next">Next</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const STORE = "ledger-accounts";
+const LIMIT = 10;
+const state = { accounts: load(), current: null, type: "credit", filter: "", page: 1, lastTx: null };
+
+function load() { try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch { return []; } }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state.accounts)); } catch {} }
+const ref = (p) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+const money = (v) => Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+async function api(method, path, body) {
+  const res = await fetch(path, { method, headers: body ? { "content-type": "application/json" } : {},
+                                  body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error?.message || `Request failed (${res.status})`),
+                                   { status: res.status, error: data.error });
+  return data;
+}
+
+function show(id, ok, text, code) {
+  const el = $(id);
+  el.className = `msg show ${ok ? "ok" : "err"}`;
+  el.textContent = text;
+  if (code) { const c = document.createElement("code"); c.textContent = ` ${code}`; el.append(c); }
+}
+
+function errorText(e) {
+  const d = e.error?.details;
+  if (e.error?.code === "VALIDATION_ERROR" && Array.isArray(d)) return d.map((x) => `${x.field}: ${x.issue}`).join("; ");
+  return e.message;
+}
+
+function renderAccounts() {
+  const ul = $("accounts");
+  ul.replaceChildren();
+  $("no-accounts").hidden = state.accounts.length > 0;
+  for (const a of state.accounts) {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("aria-current", String(a.id === state.current));
+    const n = document.createElement("span"); n.textContent = a.name;
+    const v = document.createElement("span"); v.className = "bal"; v.textContent = money(a.balance);
+    b.append(n, v);
+    b.onclick = () => select(a.id);
+    li.append(b); ul.append(li);
+  }
+  const to = $("tr-to");
+  to.replaceChildren();
+  for (const a of state.accounts.filter((x) => x.id !== state.current)) to.append(new Option(`${a.name} (${a.id.slice(0, 8)})`, a.id));
+  if (!to.options.length) to.append(new Option("Create a second account first", ""));
+}
+
+async function refresh() {
+  const id = state.current;
+  try {
+    const [acc, hist] = await Promise.all([
+      api("GET", `/accounts/${id}`),
+      api("GET", `/accounts/${id}/transactions?page=${state.page}&limit=${LIMIT}${state.filter ? `&type=${state.filter}` : ""}`),
+    ]);
+    Object.assign(state.accounts.find((a) => a.id === id), { name: acc.name, balance: acc.balance });
+    save();
+    $("acc-name").textContent = acc.name;
+    $("acc-id").textContent = acc.id;
+    $("acc-balance").textContent = money(acc.balance);
+    renderRows(hist);
+  } catch (e) {
+    if (e.status === 404) {
+      state.accounts = state.accounts.filter((a) => a.id !== id);
+      state.current = null; save(); $("detail").hidden = true;
+      show("create-msg", false, "That account is gone, because the demo data was reset. Create a new one.");
+    } else show("create-msg", false, errorText(e));
+  }
+  renderAccounts();
+}
+
+function renderRows(hist) {
+  const tb = $("rows");
+  tb.replaceChildren();
+  for (const t of hist.data) {
+    const tr = document.createElement("tr");
+    const cells = [
+      new Date(t.created_at).toLocaleString(),
+      t.type + (t.transfer_id ? " · transfer" : ""),
+      (t.type === "credit" ? "+" : "-") + money(t.amount),
+      money(t.balance_after),
+      t.reference_id,
+      t.description,
+    ];
+    cells.forEach((text, i) => {
+      const td = document.createElement("td");
+      td.textContent = text;
+      if (i === 1 || i === 2) td.classList.add(t.type);
+      if (i === 2 || i === 3) td.classList.add("num");
+      tr.append(td);
+    });
+    tb.append(tr);
+  }
+  const p = hist.pagination;
+  $("no-rows").hidden = p.total_records > 0;
+  $("page-info").textContent = `Page ${p.total_pages ? p.page : 0} of ${p.total_pages} · ${p.total_records} transactions`;
+  $("prev").disabled = p.page <= 1;
+  $("next").disabled = p.page >= p.total_pages;
+}
+
+function select(id) {
+  state.current = id; state.page = 1; state.lastTx = null;
+  $("detail").hidden = false;
+  $("tx-msg").className = "msg"; $("tr-msg").className = "msg";
+  $("tx-ref").value = ref("txn"); $("tr-ref").value = ref("trf");
+  $("tx-repeat").disabled = true;
+  refresh();
+}
+
+$("create").onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const a = await api("POST", "/accounts", { name: $("name").value });
+    state.accounts.unshift({ id: a.id, name: a.name, balance: a.balance }); save();
+    $("name").value = ""; $("create-msg").className = "msg";
+    select(a.id);
+  } catch (err) { show("create-msg", false, errorText(err)); }
+};
+
+document.querySelectorAll("#tx .seg button").forEach((b) => b.onclick = () => {
+  state.type = b.dataset.type;
+  document.querySelectorAll("#tx .seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+});
+
+async function sendTx(body) {
+  try {
+    const t = await api("POST", `/accounts/${state.current}/transactions`, body);
+    show("tx-msg", true, `Saved. New balance ${money(t.balance_after)}.`);
+    $("tx-ref").value = ref("txn"); $("tx-amount").value = ""; $("tx-desc").value = "";
+  } catch (err) { show("tx-msg", false, errorText(err), err.error?.code); }
+  state.lastTx = body; $("tx-repeat").disabled = false;
+  refresh();
+}
+
+$("tx").onsubmit = (e) => {
+  e.preventDefault();
+  sendTx({ type: state.type, amount: $("tx-amount").value.trim(), reference_id: $("tx-ref").value, description: $("tx-desc").value });
+};
+$("tx-repeat").onclick = () => state.lastTx && sendTx(state.lastTx);
+
+$("tr").onsubmit = async (e) => {
+  e.preventDefault();
+  if (!$("tr-to").value) return show("tr-msg", false, "Create a second account to transfer to.");
+  try {
+    const t = await api("POST", "/transfers", { from_account_id: state.current, to_account_id: $("tr-to").value,
+                                               amount: $("tr-amount").value.trim(), reference_id: $("tr-ref").value });
+    show("tr-msg", true, `Sent ${money(t.amount)}. Your balance is now ${money(t.debit.balance_after)}.`);
+    $("tr-ref").value = ref("trf"); $("tr-amount").value = "";
+    const dest = state.accounts.find((a) => a.id === t.credit.account_id);
+    if (dest) { dest.balance = t.credit.balance_after; save(); }
+  } catch (err) { show("tr-msg", false, errorText(err), err.error?.code); }
+  refresh();
+};
+
+document.querySelectorAll("#filter button").forEach((b) => b.onclick = () => {
+  state.filter = b.dataset.filter; state.page = 1;
+  document.querySelectorAll("#filter button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  refresh();
+});
+$("prev").onclick = () => { state.page--; refresh(); };
+$("next").onclick = () => { state.page++; refresh(); };
+
+renderAccounts();
+if (state.accounts.length) select(state.accounts[0].id);
+</script>
+</body>
+</html>

@@ -275,3 +275,8 @@ def test_transfer_needs_two_real_different_accounts(client):
     assert transfer(client, missing, a, 10).status_code == 404
     assert transfer(client, a, a, 10).json()["error"]["code"] == "SAME_ACCOUNT_TRANSFER"
     assert balance(client, a) == "100.00"
+
+
+def test_ui_is_served_at_root(client):
+    res = client.get("/")
+    assert res.status_code == 200 and "Transaction Ledger" in res.text

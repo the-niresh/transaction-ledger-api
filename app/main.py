@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -7,7 +8,7 @@ import sqlite3
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import db, ledger
@@ -15,6 +16,7 @@ from .errors import ApiError, body
 from .schemas import (Account, AccountCreate, Balance, Transaction, TransactionCreate,
                       TransactionPage, Transfer, TransferCreate)
 
+UI = (Path(__file__).parent / "static" / "index.html").read_text()
 ERRORS = {404: {"description": "Account not found"}, 422: {"description": "Validation or business rule error"}}
 
 
@@ -69,8 +71,8 @@ async def unexpected_error(_: Request, exc: Exception) -> JSONResponse:
 
 
 @app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse("/docs")
+def ui():
+    return HTMLResponse(UI)
 
 
 @app.post("/accounts", status_code=201, response_model=Account, tags=["accounts"])

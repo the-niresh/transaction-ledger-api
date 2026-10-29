@@ -6,8 +6,9 @@ transaction history, and transfer money between accounts.
 Built with **Python 3.12+, FastAPI and SQLite**. SQLite needs no server, so the project runs
 locally with one command and nothing else to install.
 
-**Live demo:** https://confluencer-assignment.vercel.app (opens the interactive docs, where every
-endpoint can be tried in the browser). The demo runs on Vercel, where SQLite can only write to
+**Live demo:** https://transaction-ledger-api.vercel.app opens a small web page for creating
+accounts, adding credits and debits, transferring, and browsing history with the filter and
+pagination. Every endpoint can also be tried at `/docs`. The demo runs on Vercel, where SQLite can only write to
 `/tmp`, which is wiped when an instance restarts. So data on the demo can reset at any time, and
 two requests may land on different instances. Run it locally to see data that persists.
 
@@ -28,7 +29,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-The API runs on http://127.0.0.1:8000. The database file `ledger.db` is created on first start.
+The web page runs on http://127.0.0.1:8000 and the API on the same address. The database file `ledger.db` is created on first start.
 Set `LEDGER_DB=/path/to/file.db` to use another file.
 
 **Interactive API docs:** http://127.0.0.1:8000/docs (Swagger) or http://127.0.0.1:8000/redoc.
@@ -40,7 +41,7 @@ The same spec is saved in [`docs/openapi.json`](docs/openapi.json).
 uv run pytest        # or: pytest
 ```
 
-38 tests cover every rule in the brief, including concurrent debits and duplicate requests, and
+39 tests cover every rule in the brief, including concurrent debits and duplicate requests, and
 direct SQL attempts to edit or delete a transaction.
 
 ## Project structure
@@ -53,6 +54,8 @@ app/
   schema.sql   tables, constraints and triggers
   db.py        SQLite connection and startup
   errors.py    the single error shape
+  static/
+    index.html the web page: one file, plain HTML and JavaScript, no build step
 tests/
   test_ledger.py
 docs/
