@@ -6,11 +6,11 @@ transaction history, and transfer money between accounts.
 Built with **Python 3.12+, FastAPI and SQLite**. SQLite needs no server, so the project runs
 locally with one command and nothing else to install.
 
-**Live demo:** https://txn-ledger-api.vercel.app opens a small web page for creating
-accounts, adding credits and debits, transferring, and browsing history with the filter and
-pagination. Every endpoint can also be tried at `/docs`. The demo runs on Vercel, where SQLite can only write to
-`/tmp`, which is wiped when an instance restarts. So data on the demo can reset at any time, and
-two requests may land on different instances. Run it locally to see data that persists.
+**Live demo:** https://transaction-ledger-api-ecuf.onrender.com opens a small web page for
+creating accounts, adding credits and debits, transferring, and browsing history with the filter
+and pagination. Every endpoint can also be tried at `/docs`. It runs on Render's free plan as one
+instance: it sleeps after about 15 minutes idle, the first visit after that takes about 30
+seconds, and the demo data resets when it wakes. Run it locally to keep data.
 
 ## Run it
 
